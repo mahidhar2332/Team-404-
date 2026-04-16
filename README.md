@@ -46,7 +46,10 @@ git push origin main
 
 ## Problem Statement
 
-[Write your problem statement here]
+Most students managing money on their own for the first time run dry before the month ends. The
+budgeting apps that exist were built for salaried adults and do not map well to how students actually
+spend: canteen meals, auto fares, last-minute stationery, weekend plans. They end up guessing
+where the money went.
 
 ---
 
