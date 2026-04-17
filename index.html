@@ -33,9 +33,19 @@
         <div class="app-container">
             <!-- Top Nav -->
             <header class="app-header">
-                <div class="header-title">
-                    <span class="yellow">₹</span>BROKE?
+                <div class="header-title" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="yellow" style="font-size: 1.5rem; background: rgba(255, 209, 102, 0.1); padding: 5px 12px; border-radius: 8px;">₹</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="line-height: 1;">BROKE<span class="yellow">?</span></span>
+                        <span class="subtext" style="font-size: 0.5rem; letter-spacing: 2px;">EXPENSE TRACKER</span>
+                    </div>
                 </div>
+                <button id="reset-app-btn" title="Reset Monthly Data" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; transition: color 0.2s;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                </button>
             </header>
 
             <div class="view-scroll-container">
@@ -158,6 +168,13 @@
                     </div>
 
                     <div class="input-group mb-md">
+                        <label>DATE</label>
+                        <div class="input-wrapper no-symbol" style="padding: 0;">
+                            <input type="date" id="add-date" style="width: 100%; background: transparent; border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 1rem; padding: 1rem; outline: none; appearance: none;">
+                        </div>
+                    </div>
+
+                    <div class="input-group mb-md">
                         <label>PAYMENT MODE</label>
                         <div class="input-wrapper no-symbol" style="padding: 0;">
                             <select id="add-payment-mode" style="width: 100%; background: transparent; border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 1rem; padding: 1rem; outline: none; appearance: none;">
@@ -170,8 +187,8 @@
 
                     <!-- Apple Style Toggle -->
                     <div class="toggle-group mb-xl">
-                        <label>RECURRING (MANUAL)</label>
-                        <label class="apple-switch">
+                        <label style="flex: 1;">AUTOPAY / FIXED EXPENSE <br><span style="font-size: 0.65rem; color: var(--text-muted); font-weight: normal; text-transform: none; display: block; margin-top: 2px;">Non-negotiable monthly expenses</span></label>
+                        <label class="apple-switch" style="flex-shrink: 0; margin-left: 1rem;">
                             <input type="checkbox" id="add-recurring">
                             <span class="slider"></span>
                         </label>

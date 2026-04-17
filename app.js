@@ -28,7 +28,8 @@ function playSound(id) {
 function init() {
   playSound('sound-coin');
 
-  // Cinematic Splash Sequence (Jumble Decode Phase)
+  // Cinematic Splash Sequence (Jumble Decode Phase 1)
+  const splash = el('splash-screen');
   const jumbleEl = el('splash-main-text');
   if (jumbleEl) {
     const target = "BROKE";
@@ -44,15 +45,21 @@ function init() {
       if (inter >= target.length) {
         clearInterval(scrambler);
         jumbleEl.innerHTML = `BROKE<span class="q-curve">?</span>`;
-        setTimeout(() => playSound('sound-swoosh'), 200); // Trigger swoosh nicely along with question mark animation
+        
+        // Phase 2: Trigger Orbit after jumble settles
+        setTimeout(() => {
+          if (splash) splash.classList.add('start-orbit');
+          playSound('sound-swoosh');
+        }, 500); 
       }
     }, 40);
   }
 
+  // Phase 3: Total delay for splash removal (5.5s)
   setTimeout(() => {
-    const splash = el('splash-screen');
     if (splash) splash.remove();
-  }, 4500);
+  }, 6500);
+
 
   views = {
     'setup': el('view-setup'),
@@ -140,19 +147,25 @@ function init() {
     setupAddBtn.addEventListener('click', () => openCatModal(true));
   }
 
-  el('start-tracking-btn').addEventListener('click', () => {
-    const val = parseFloat(el('setup-budget-input').value);
-    if (val && val > 0) {
-      budget = val;
-      localStorage.setItem('budget', budget);
-      localStorage.setItem('categories', JSON.stringify(customCategories));
-      showView('dashboard');
-      el('bottom-nav').style.display = 'flex';
-      showToast('Budget initialized!');
-    } else {
-      showToast('Enter a valid budget.');
-    }
-  });
+  const startBtn = el('start-tracking-btn');
+  if (startBtn) {
+    startBtn.addEventListener('click', () => {
+      const budgetInput = el('setup-budget-input');
+      const val = budgetInput ? parseFloat(budgetInput.value) : 0;
+      if (val && val > 0) {
+        budget = val;
+        localStorage.setItem('budget', budget);
+        localStorage.setItem('categories', JSON.stringify(customCategories));
+        showView('dashboard');
+        const nav = el('bottom-nav');
+        if (nav) nav.style.display = 'flex';
+        showToast('Budget initialized!');
+      } else {
+        showToast('Enter a valid budget.');
+      }
+    });
+  }
+
 
   // Glass Nav Routing
   document.querySelectorAll('.nav-item').forEach(nav => {
@@ -164,37 +177,62 @@ function init() {
     });
   });
 
-  el('save-expense-btn').addEventListener('click', () => {
-    const amt = parseFloat(el('add-amount').value);
-    const note = el('add-note').value;
-    const isRecurring = el('add-recurring').checked;
-    const payMode = el('add-payment-mode') ? el('add-payment-mode').value : 'Cash';
-    if (!amt || amt <= 0) return showToast('Enter valid amount');
+  const saveExpenseBtn = el('save-expense-btn');
+  if (saveExpenseBtn) {
+    saveExpenseBtn.addEventListener('click', () => {
+      const amtInput = el('add-amount');
+      const amt = amtInput ? parseFloat(amtInput.value) : 0;
+      const noteInput = el('add-note');
+      const note = noteInput ? noteInput.value : '';
+      const recInput = el('add-recurring');
+      const isRecurring = recInput ? recInput.checked : false;
+      const payModeInput = el('add-payment-mode');
+      const payMode = payModeInput ? payModeInput.value : 'Cash';
+      
+      if (!amt || amt <= 0) return showToast('Enter valid amount');
 
-    expenses.push({ id: Date.now(), amount: amt, category: currentCategory, paymentMode: payMode, note: `${note} ${isRecurring ? '(Recurring)' : ''}`, date: new Date().toISOString() });
-    localStorage.setItem('expenses', JSON.stringify(expenses));
+      const dateInput = el('add-date');
+      const customDate = (dateInput && dateInput.value) ? new Date(dateInput.value).toISOString() : new Date().toISOString();
 
-    playSound('sound-tada');
+      expenses.push({ 
+        id: Date.now(), 
+        amount: amt, 
+        category: currentCategory, 
+        paymentMode: payMode, 
+        note: `${note} ${isRecurring ? '(Autopay)' : ''}`, 
+        isRecurring: isRecurring,
+        date: customDate 
+      });
+      localStorage.setItem('expenses', JSON.stringify(expenses));
+      playSound('sound-tada');
 
-    el('add-amount').value = '';
-    el('add-note').value = '';
-    showToast('Expense Added!');
+      if (amtInput) amtInput.value = '';
+      if (noteInput) noteInput.value = '';
+      showToast('Expense Added!');
 
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-target="view-dashboard"]').classList.add('active');
-    showView('dashboard');
-  });
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const dashNav = document.querySelector('[data-target="view-dashboard"]');
+      if (dashNav) dashNav.classList.add('active');
+      showView('dashboard');
+    });
+  }
 
-  el('stash-btn').addEventListener('click', () => {
-    const amt = parseFloat(el('stash-input').value);
-    if (!amt || amt <= 0) return;
-    stash += amt;
-    localStorage.setItem('stash', stash);
-    el('stash-input').value = '';
-    updateKeeperUI();
-    playSound('sound-coin');
-    showToast('Money locked into Keeper!');
-  });
+
+  const stashBtn = el('stash-btn');
+  if (stashBtn) {
+    stashBtn.addEventListener('click', () => {
+      const stashInput = el('stash-input');
+      const amt = stashInput ? parseFloat(stashInput.value) : 0;
+      if (!amt || amt <= 0) return;
+      stash += amt;
+      localStorage.setItem('stash', stash);
+      if (stashInput) stashInput.value = '';
+      updateKeeperUI();
+      playSound('sound-coin');
+      showToast('Money locked into Keeper!');
+    });
+  }
+
 
   const withdrawBtn = el('withdraw-btn');
   if (withdrawBtn) {
@@ -214,11 +252,25 @@ function init() {
 
   renderCategoriesUI();
 
-  el('add-custom-cat-btn').addEventListener('click', () => openCatModal(false));
+  const addCustomCatBtn = el('add-custom-cat-btn');
+  if (addCustomCatBtn) {
+    addCustomCatBtn.addEventListener('click', () => openCatModal(false));
+  }
 
   const showWrap = el('show-wrap-btn');
-  if(showWrap) showWrap.addEventListener('click', () => triggerMonthWrap());
+  if (showWrap) showWrap.addEventListener('click', () => triggerMonthWrap());
+
+  const resetBtn = el('reset-app-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (confirm("Are you sure you want to reset all tracking data? This cannot be undone.")) {
+        localStorage.clear();
+        location.reload();
+      }
+    });
+  }
 }
+
 
 function renderSetupCategories() {
   const container = el('setup-categories');
@@ -337,9 +389,8 @@ function updateDashboard() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
 
-  // If "Recurring (Manual)" is explicitly off (e.isRecurring === false), DO NOT deduct from budget
-  const actionableExps = monthExps.filter(e => e.isRecurring !== false);
-  const totalSpent = actionableExps.reduce((a, b) => a + b.amount, 0);
+  // ALL expenses (autopay and manual) safely deduct from budget
+  const totalSpent = monthExps.reduce((a, b) => a + b.amount, 0);
   const remBudget = budget - totalSpent - stash; // Stash deducted from allowance
   const maxAvailable = budget - stash;
   const percUsed = maxAvailable > 0 ? Math.min(100, (totalSpent / maxAvailable) * 100) : 0;
@@ -386,8 +437,8 @@ function updateDashboard() {
     renderHistory(monthExps);
   }
 
-  // Restore local heuristics for Days Until Broke
-  updateDaysUntilBrokeUI(totalSpent, remBudget);
+  // Restore logic for Days Until Broke strictly dependent on variable payments
+  updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget);
 
   // AI Insights
   const aiBox = el('ai-insight-box');
@@ -410,7 +461,7 @@ function updateDashboard() {
   }
 }
 
-function updateDaysUntilBrokeUI(totalSpent, remBudget) {
+function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
   if (expenses.length === 0 || totalSpent === 0) {
     if (el('dash-days')) el('dash-days').innerText = "—";
     if (el('dash-warning-text')) el('dash-warning-text').innerText = "Waiting for first transaction...";
@@ -426,9 +477,21 @@ function updateDaysUntilBrokeUI(totalSpent, remBudget) {
   const daysLeft = daysInMonth - now.getDate() + 1;
 
   let daysUntilBrokeVal = daysLeft;
-  if (remBudget <= 0) daysUntilBrokeVal = 0;
-  else if (totalSpent > 0 && now.getDate() > 1) {
-    daysUntilBrokeVal = Math.floor(remBudget / (totalSpent / (now.getDate() - 1)));
+  if (remBudget <= 0) {
+    daysUntilBrokeVal = 0;
+  } else {
+    // Exclude fixed (recurring) expenses from burn rate calculations.
+    // We only care about how fast you burn cash *manually*.
+    const variableExps = monthExps.filter(e => !e.isRecurring);
+    const variableSpent = variableExps.reduce((a, b) => a + b.amount, 0);
+
+    if (variableSpent > 0 && now.getDate() > 1) {
+      const dailyVariableRate = variableSpent / (now.getDate() - 1);
+      daysUntilBrokeVal = Math.floor(remBudget / dailyVariableRate);
+    } else if (variableSpent === 0 && totalSpent > 0 && remBudget > 0) {
+       // If they've only paid auto-pay bills so far, assume they have the rest of the month
+       daysUntilBrokeVal = daysLeft;
+    }
   }
 
   if (daysUntilBrokeVal > daysInMonth) daysUntilBrokeVal = daysInMonth;
@@ -482,10 +545,17 @@ function updateDualCharts(monthExps) {
     customCategories.forEach(c => mCatTotals[c.name] = 0);
     monthExps.forEach(e => { mCatTotals[e.category] = (mCatTotals[e.category] || 0) + e.amount; });
 
-    const mLabels = Object.keys(mCatTotals).filter(k => mCatTotals[k] > 0);
-    if (mLabels.length === 0) mLabels.push('No Data');
-    const mData = mLabels.map(k => mCatTotals[k] || 1);
-    const mBg = mLabels.map(l => { const match = customCategories.find(c => c.name === l); return match ? match.color : '#8A8D98'; });
+    let mLabels = Object.keys(mCatTotals).filter(k => mCatTotals[k] > 0);
+    let mData, mBg;
+
+    if (mLabels.length === 0) {
+        mLabels = ['Awaiting Data'];
+        mData = [1];
+        mBg = ['#2A2C35'];
+    } else {
+        mData = mLabels.map(k => mCatTotals[k] || 1);
+        mBg = mLabels.map(l => { const match = customCategories.find(c => c.name === l); return match ? match.color : '#8A8D98'; });
+    }
 
     if (monthlyChart) monthlyChart.destroy();
     monthlyChart = new Chart(mCtx, {
@@ -504,10 +574,17 @@ function updateDualCharts(monthExps) {
     customCategories.forEach(c => yCatTotals[c.name] = 0);
     yearExps.forEach(e => { yCatTotals[e.category] = (yCatTotals[e.category] || 0) + e.amount; });
 
-    const yLabels = Object.keys(yCatTotals).filter(k => yCatTotals[k] > 0);
-    if (yLabels.length === 0) yLabels.push('No Data');
-    const yData = yLabels.map(k => yCatTotals[k] || 1);
-    const yBg = yLabels.map(l => { const match = customCategories.find(c => c.name === l); return match ? match.color : '#8A8D98'; });
+    let yLabels = Object.keys(yCatTotals).filter(k => yCatTotals[k] > 0);
+    let yData, yBg;
+    
+    if (yLabels.length === 0) {
+        yLabels = ['Awaiting Data'];
+        yData = [1];
+        yBg = ['#2A2C35'];
+    } else {
+        yData = yLabels.map(k => yCatTotals[k] || 1);
+        yBg = yLabels.map(l => { const match = customCategories.find(c => c.name === l); return match ? match.color : '#8A8D98'; });
+    }
 
     if (yearlyChart) yearlyChart.destroy();
     yearlyChart = new Chart(yCtx, {
@@ -578,8 +655,8 @@ function triggerMonthWrap() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   
-  const actionableExps = monthExps.filter(e => e.isRecurring !== false);
-  const totalSpent = actionableExps.reduce((a, b) => a + b.amount, 0);
+  // ALL expenses
+  const totalSpent = monthExps.reduce((a, b) => a + b.amount, 0);
   const budgetRatio = budget > 0 ? (stash / budget) : 0;
   
   let scoreBadge = '';
@@ -604,14 +681,14 @@ function triggerMonthWrap() {
       return;
     }
     const s = slides[currentSlide];
-    wrapScreen.className = \`month-wrap-screen active \${s.bg}\`;
+    wrapScreen.className = `month-wrap-screen active ${s.bg}`;
     playSound('sound-swoosh');
-    content.innerHTML = \`
-      <div class="wrap-emoji">\${s.emoji}</div>
-      <div class="wrap-title">\${s.title}</div>
-      <div class="wrap-hero">\${s.hero}</div>
-      <div class="wrap-sub">\${s.sub}</div>
-    \`;
+    content.innerHTML = `
+      <div class="wrap-emoji">${s.emoji}</div>
+      <div class="wrap-title">${s.title}</div>
+      <div class="wrap-hero">${s.hero}</div>
+      <div class="wrap-sub">${s.sub}</div>
+    `;
     
     bar.style.transition = 'none';
     bar.style.width = '0%';
@@ -629,4 +706,10 @@ function triggerMonthWrap() {
   renderSlide();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// Safe initialization
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
