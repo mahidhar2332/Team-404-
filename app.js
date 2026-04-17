@@ -463,76 +463,158 @@ function updateDashboard() {
 }
 
 function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
-  if (expenses.length === 0 || totalSpent === 0) {
-    if (el('dash-days')) el('dash-days').innerText = "—";
-    if (el('dash-warning-text')) el('dash-warning-text').innerText = "Waiting for first transaction...";
-    if (el('days-meter')) {
-        el('days-meter').style.strokeDashoffset = 282.7;
-        el('days-meter').style.stroke = '#8A8D98';
-    }
-    return;
-  }
+  const dashDaysNode = el('dash-days');
+  const warningTextNode = el('dash-warning-text');
+  const circMeter = el('days-meter');
+  const trendNode = el('dash-trend');
+  const predictionMsg = el('dash-prediction-msg');
+
+  const setEmpty = () => {
+    if (dashDaysNode) dashDaysNode.innerText = "—";
+    if (warningTextNode) warningTextNode.innerText = "Waiting for first transaction...";
+    if (circMeter) { circMeter.style.strokeDashoffset = 282.7; circMeter.style.stroke = '#8A8D98'; }
+    if (trendNode) trendNode.innerText = '';
+    if (predictionMsg) predictionMsg.style.display = 'none';
+  };
+
+  if (expenses.length === 0 || totalSpent === 0) { setEmpty(); return; }
 
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = daysInMonth - now.getDate() + 1;
   const daysElapsed = Math.max(1, now.getDate());
 
-  let daysUntilBrokeVal = daysLeft;
   if (remBudget <= 0) {
-    daysUntilBrokeVal = 0;
-  } else {
-    // Exclude fixed expenses (Autopay) from burn rate calculations.
-    // Legacy support: filter out if e.expenseType === 'Fixed' OR e.isRecurring === true (if old data)
-    const variableExps = monthExps.filter(e => e.expenseType !== 'Fixed' && e.isRecurring !== true);
-    const variableSpent = variableExps.reduce((a, b) => a + b.amount, 0);
-
-    if (variableSpent > 0) {
-      const dailyVariableRate = variableSpent / daysElapsed;
-      daysUntilBrokeVal = Math.floor(remBudget / dailyVariableRate);
-    } else if (variableSpent === 0 && totalSpent > 0 && remBudget > 0) {
-       // If no variable money spent, basically infinite lifespan technically for variable.
-       // Set artificially high default to reward saving behavior.
-       daysUntilBrokeVal = 999;
+    if (dashDaysNode) { dashDaysNode.innerText = "0"; dashDaysNode.style.color = '#ef4444'; }
+    if (warningTextNode) { warningTextNode.innerText = "⚠ Budget exhausted!"; warningTextNode.style.color = '#ef4444'; }
+    if (circMeter) { circMeter.style.strokeDashoffset = 282.7; circMeter.style.stroke = '#ef4444'; }
+    if (trendNode) trendNode.innerText = '📉';
+    if (predictionMsg) {
+      predictionMsg.style.display = 'block';
+      predictionMsg.innerText = "You have run out of budget for this month.";
+      predictionMsg.style.background = 'rgba(239,68,68,0.12)';
+      predictionMsg.style.color = '#ef4444';
     }
+    return;
   }
 
-  // Remove the artificial daysInMonth cap so it can legally display high numbers like 150 days
-  animateValue(el('dash-days'), 0, daysUntilBrokeVal, 600);
+  // --- ADAPTIVE SPENDING ENGINE ---
+  // Filter out Fixed/Autopay expenses from burn rate (they don't reflect daily habits)
+  const variableExps = monthExps.filter(e => e.expenseType !== 'Fixed' && e.isRecurring !== true);
 
-  const circMeter = el('days-meter');
-  let dashPerc = (daysUntilBrokeVal / daysInMonth);
-  if (dashPerc > 1) dashPerc = 1;
+  // Group variable expenses by day-of-month
+  const spendByDay = {};
+  variableExps.forEach(e => {
+    const d = new Date(e.date).getDate();
+    spendByDay[d] = (spendByDay[d] || 0) + e.amount;
+  });
+
+  const variableSpent = variableExps.reduce((a, b) => a + b.amount, 0);
+  const overallAvg = variableSpent / daysElapsed;
+
+  // Recent 3-day average
+  const lastDay = now.getDate();
+  let recentTotal = 0;
+  let recentDays = 0;
+  for (let d = Math.max(1, lastDay - 2); d <= lastDay; d++) {
+    recentTotal += (spendByDay[d] || 0);
+    recentDays++;
+  }
+  const recentAvg = recentDays > 0 ? recentTotal / recentDays : 0;
+
+  // Did user spend ₹0 today?
+  const spentToday = spendByDay[lastDay] || 0;
+  const spentYesterday = spendByDay[lastDay - 1] || 0;
+
+  // Weighted average (spike damper): 60% recent, 40% overall
+  let adjustedAvg = (0.6 * recentAvg) + (0.4 * overallAvg);
+
+  // Reward saving: if ₹0 spent today, ease the rate down by 10%
+  if (spentToday === 0 && variableSpent > 0) {
+    adjustedAvg *= 0.9;
+  }
+  // If last 2 days both had low spending, reduce further
+  if (spentToday === 0 && spentYesterday === 0 && variableSpent > 0) {
+    adjustedAvg *= 0.85;
+  }
+
+  // Early-month stabiliser: avoid wild swings in first few days
+  if (daysElapsed <= 4) {
+    const floorAvg = budget / 30;
+    adjustedAvg = Math.max(adjustedAvg, floorAvg);
+  }
+
+  // Determine trend for display
+  let trend = 'stable';
+  if (recentAvg > overallAvg * 1.15) trend = 'worsening';
+  else if (recentAvg < overallAvg * 0.85 || spentToday === 0) trend = 'improving';
+
+  let daysUntilBrokeVal;
+  if (adjustedAvg <= 0) {
+    // No spending trend at all — budget lasts indefinitely
+    daysUntilBrokeVal = 365;
+  } else {
+    daysUntilBrokeVal = Math.floor(remBudget / adjustedAvg);
+    // Cap at 365 days max
+    daysUntilBrokeVal = Math.min(daysUntilBrokeVal, 365);
+    daysUntilBrokeVal = Math.max(daysUntilBrokeVal, 0);
+  }
+
+  // Animate and update number
+  animateValue(dashDaysNode, 0, daysUntilBrokeVal, 800);
+
+  // Circular meter — normalise against current month for visual proportion
+  const meterRef = daysInMonth;
+  let dashPerc = Math.min(daysUntilBrokeVal / meterRef, 1);
   if (dashPerc < 0) dashPerc = 0;
   const offset = 282.7 - (dashPerc * 282.7);
-
   if (circMeter) {
     circMeter.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), stroke 0.5s';
     circMeter.style.strokeDashoffset = offset;
   }
 
-  let warningStr = `Running out before month ends`;
-  const dashDaysNode = el('dash-days');
-  const warningTextNode = el('dash-warning-text');
+  // --- Colors, Trend Arrow, Messages ---
+  let color, warningStr, predictionStr, predictionBg;
 
-  if (daysUntilBrokeVal < 7) {
-    if (circMeter) circMeter.style.stroke = '#ef4444';
-    if (dashDaysNode) dashDaysNode.style.color = '#ef4444';
-    if (warningTextNode) warningTextNode.style.color = '#ef4444';
-    warningStr = "Out of funds soon.";
-  } else if (daysUntilBrokeVal < daysInMonth) {
-    if (circMeter) circMeter.style.stroke = '#FFD166';
-    if (dashDaysNode) dashDaysNode.style.color = '#FFD166';
-    if (warningTextNode) warningTextNode.style.color = '#8A8D98';
+  if (adjustedAvg <= 0) {
+    color = '#4ADE80';
+    warningStr = '✅ Safe (No spending trend)';
+    predictionStr = "You're on track for the month!";
+    predictionBg = 'rgba(74,222,128,0.1)';
+  } else if (daysUntilBrokeVal < 7) {
+    color = '#ef4444';
+    warningStr = '⚠ Critical — funds depleting fast!';
+    predictionStr = `You may run out in ${daysUntilBrokeVal} days`;
+    predictionBg = 'rgba(239,68,68,0.12)';
+  } else if (daysUntilBrokeVal < daysLeft) {
+    color = '#FFD166';
+    warningStr = '⚡ You may run out before month ends';
+    predictionStr = `You may run out in ${daysUntilBrokeVal} days`;
+    predictionBg = 'rgba(255,209,102,0.1)';
   } else {
-    // Highly efficient spending, exceeds month
-    if (circMeter) circMeter.style.stroke = '#4ADE80';
-    if (dashDaysNode) dashDaysNode.style.color = '#4ADE80';
-    if (warningTextNode) warningTextNode.style.color = '#8A8D98';
-    warningStr = "Incredible saving rate!";
+    color = '#4ADE80';
+    warningStr = '✅ You\'re on track for the month!';
+    predictionStr = "You're on track for the month!";
+    predictionBg = 'rgba(74,222,128,0.1)';
   }
 
-  if (warningTextNode) warningTextNode.innerText = `⚠ ${warningStr}`;
+  if (circMeter) circMeter.style.stroke = color;
+  if (dashDaysNode) dashDaysNode.style.color = color;
+  if (warningTextNode) { warningTextNode.innerText = warningStr; warningTextNode.style.color = color === '#4ADE80' ? '#8A8D98' : color; }
+
+  if (trendNode) {
+    if (trend === 'improving') trendNode.innerText = '📈';
+    else if (trend === 'worsening') trendNode.innerText = '📉';
+    else trendNode.innerText = '➡️';
+    trendNode.title = trend === 'improving' ? 'Spending trend improving' : trend === 'worsening' ? 'Spending trend worsening' : 'Spending trend stable';
+  }
+
+  if (predictionMsg) {
+    predictionMsg.style.display = 'block';
+    predictionMsg.innerText = predictionStr;
+    predictionMsg.style.background = predictionBg;
+    predictionMsg.style.color = color;
+  }
 }
 
 function updateDualCharts(monthExps) {

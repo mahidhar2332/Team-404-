@@ -92,7 +92,7 @@
 
                     <!-- Days Until Broke Widget -->
                     <div class="card circular-widget-card mb-md glow-anim" id="hero-widget">
-                        <div class="widget-header">DAYS UNTIL BROKE</div>
+                        <div class="widget-header">DAYS UNTIL BROKE <span id="dash-trend" style="font-size: 1rem; margin-left: 6px;"></span></div>
                         <div class="circular-progress-container mb-sm mt-md">
                             <svg class="circular-progress" viewBox="0 0 100 100">
                                 <circle class="bg" cx="50" cy="50" r="45"></circle>
@@ -107,11 +107,12 @@
                                 </circle>
                             </svg>
                             <div class="widget-value">
-                                <span class="number green" id="dash-days">0</span>
+                                <span class="number green" id="dash-days">—</span>
                                 <span class="label">days</span>
                             </div>
                         </div>
                         <div class="widget-footer text-muted sm-text" id="dash-warning-text"></div>
+                        <div id="dash-prediction-msg" style="font-size: 0.72rem; text-align: center; margin-top: 0.5rem; padding: 0.4rem 1rem; border-radius: 8px; display: none; font-weight: 600; letter-spacing: 0.3px;"></div>
                     </div>
 
                     <!-- Spent / Remaining Card -->
