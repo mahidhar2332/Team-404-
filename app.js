@@ -438,7 +438,7 @@ function updateDashboard() {
     renderHistory(monthExps);
   }
 
-  // Restore logic for Days Until Broke strictly dependent on variable payments
+  // Always update Days Until Broke — shows 30 days baseline even when no expenses logged
   updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget);
 
   // AI Insights
@@ -469,20 +469,14 @@ function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
   const trendNode = el('dash-trend');
   const predictionMsg = el('dash-prediction-msg');
 
-  const setEmpty = () => {
-    if (dashDaysNode) dashDaysNode.innerText = "—";
-    if (warningTextNode) warningTextNode.innerText = "Waiting for first transaction...";
-    if (circMeter) { circMeter.style.strokeDashoffset = 282.7; circMeter.style.stroke = '#8A8D98'; }
-    if (trendNode) trendNode.innerText = '';
-    if (predictionMsg) predictionMsg.style.display = 'none';
-  };
-
-  if (expenses.length === 0 || totalSpent === 0) { setEmpty(); return; }
-
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = daysInMonth - now.getDate() + 1;
   const daysElapsed = Math.max(1, now.getDate());
+
+  // If budget is not set yet (shouldn't happen on dashboard but guard anyway)
+  if (!budget || budget <= 0) return;
+
 
   if (remBudget <= 0) {
     if (dashDaysNode) { dashDaysNode.innerText = "0"; dashDaysNode.style.color = '#ef4444'; }
@@ -510,7 +504,11 @@ function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
   });
 
   const variableSpent = variableExps.reduce((a, b) => a + b.amount, 0);
-  const overallAvg = variableSpent / daysElapsed;
+
+  // BASELINE: Budget / 30 → gives exactly 30 days as the starting point
+  const baselineRate = budget / 30;
+
+  const overallAvg = variableSpent > 0 ? variableSpent / daysElapsed : baselineRate;
 
   // Recent 3-day average
   const lastDay = now.getDate();
@@ -520,42 +518,46 @@ function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
     recentTotal += (spendByDay[d] || 0);
     recentDays++;
   }
-  const recentAvg = recentDays > 0 ? recentTotal / recentDays : 0;
+  const recentAvg = recentDays > 0 ? recentTotal / recentDays : baselineRate;
+
+  // If no spending has happened at all, anchor to baseline so widget shows 30 days
+  const hasRealData = variableSpent > 0;
 
   // Did user spend ₹0 today?
   const spentToday = spendByDay[lastDay] || 0;
   const spentYesterday = spendByDay[lastDay - 1] || 0;
 
   // Weighted average (spike damper): 60% recent, 40% overall
-  let adjustedAvg = (0.6 * recentAvg) + (0.4 * overallAvg);
+  let adjustedAvg = hasRealData
+    ? (0.6 * recentAvg) + (0.4 * overallAvg)
+    : baselineRate;
 
-  // Reward saving: if ₹0 spent today, ease the rate down by 10%
-  if (spentToday === 0 && variableSpent > 0) {
+  // Reward saving: if ₹0 spent today and there IS some spending history, ease rate down by 10%
+  if (hasRealData && spentToday === 0) {
     adjustedAvg *= 0.9;
   }
-  // If last 2 days both had low spending, reduce further
-  if (spentToday === 0 && spentYesterday === 0 && variableSpent > 0) {
+  // If last 2 days both had zero spending, reduce further — days climb upward
+  if (hasRealData && spentToday === 0 && spentYesterday === 0) {
     adjustedAvg *= 0.85;
   }
 
-  // Early-month stabiliser: avoid wild swings in first few days
+  // Always enforce a minimum floor of baselineRate so early-month spikes don't distort wildly
   if (daysElapsed <= 4) {
-    const floorAvg = budget / 30;
-    adjustedAvg = Math.max(adjustedAvg, floorAvg);
+    adjustedAvg = Math.max(adjustedAvg, baselineRate);
   }
 
   // Determine trend for display
   let trend = 'stable';
-  if (recentAvg > overallAvg * 1.15) trend = 'worsening';
-  else if (recentAvg < overallAvg * 0.85 || spentToday === 0) trend = 'improving';
+  if (hasRealData) {
+    if (recentAvg > overallAvg * 1.15) trend = 'worsening';
+    else if (recentAvg < overallAvg * 0.85 || spentToday === 0) trend = 'improving';
+  }
 
   let daysUntilBrokeVal;
   if (adjustedAvg <= 0) {
-    // No spending trend at all — budget lasts indefinitely
-    daysUntilBrokeVal = 365;
+    daysUntilBrokeVal = 30; // fallback
   } else {
     daysUntilBrokeVal = Math.floor(remBudget / adjustedAvg);
-    // Cap at 365 days max
     daysUntilBrokeVal = Math.min(daysUntilBrokeVal, 365);
     daysUntilBrokeVal = Math.max(daysUntilBrokeVal, 0);
   }
