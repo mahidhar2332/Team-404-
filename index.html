@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Broke? Expense Tracker</title>
+    <title>Expenza? Expense Tracker</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +36,7 @@
                 <div class="header-title" style="display: flex; align-items: center; gap: 8px;">
                     <span class="yellow" style="font-size: 1.5rem; background: rgba(255, 209, 102, 0.1); padding: 5px 12px; border-radius: 8px;">₹</span>
                     <div style="display: flex; flex-direction: column;">
-                        <span style="line-height: 1;">BROKE<span class="yellow">?</span></span>
+                        <span style="line-height: 1;">EXPENZA<span class="yellow">?</span></span>
                         <span class="subtext" style="font-size: 0.5rem; letter-spacing: 2px;">EXPENSE TRACKER</span>
                     </div>
                 </div>
@@ -185,13 +185,16 @@
                         </div>
                     </div>
 
-                    <!-- Apple Style Toggle -->
-                    <div class="toggle-group mb-xl">
-                        <label style="flex: 1;">AUTOPAY / FIXED EXPENSE <br><span style="font-size: 0.65rem; color: var(--text-muted); font-weight: normal; text-transform: none; display: block; margin-top: 2px;">Non-negotiable monthly expenses</span></label>
-                        <label class="apple-switch" style="flex-shrink: 0; margin-left: 1rem;">
-                            <input type="checkbox" id="add-recurring">
-                            <span class="slider"></span>
-                        </label>
+                    <!-- Expense Type Dropdown -->
+                    <div class="input-group mb-xl">
+                        <label>EXPENSE TYPE</label>
+                        <div class="input-wrapper no-symbol" style="padding: 0;">
+                            <select id="add-expense-type" style="width: 100%; background: transparent; border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 1rem; padding: 1rem; outline: none; appearance: none;">
+                                <option value="One-Time" style="color: black;">🛒 One-Time Payment</option>
+                                <option value="Recurring" style="color: black;">🔄 Recurring (Variable)</option>
+                                <option value="Fixed" style="color: black;">🔒 Fixed Expense (Autopay)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button class="btn btn-primary" id="save-expense-btn">ADD EXPENSE</button>

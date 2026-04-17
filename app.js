@@ -32,7 +32,7 @@ function init() {
   const splash = el('splash-screen');
   const jumbleEl = el('splash-main-text');
   if (jumbleEl) {
-    const target = "BROKE";
+    const target = "EXPENZA";
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#%&*@!$123456789";
     let inter = 0;
     const scrambler = setInterval(() => {
@@ -44,7 +44,7 @@ function init() {
       inter += 1 / 3;
       if (inter >= target.length) {
         clearInterval(scrambler);
-        jumbleEl.innerHTML = `BROKE<span class="q-curve">?</span>`;
+        jumbleEl.innerHTML = `EXPENZA<span class="q-curve">?</span>`;
         
         // Phase 2: Trigger Orbit after jumble settles
         setTimeout(() => {
@@ -184,8 +184,8 @@ function init() {
       const amt = amtInput ? parseFloat(amtInput.value) : 0;
       const noteInput = el('add-note');
       const note = noteInput ? noteInput.value : '';
-      const recInput = el('add-recurring');
-      const isRecurring = recInput ? recInput.checked : false;
+      const typeInput = el('add-expense-type');
+      const expenseType = typeInput ? typeInput.value : 'One-Time';
       const payModeInput = el('add-payment-mode');
       const payMode = payModeInput ? payModeInput.value : 'Cash';
       
@@ -199,8 +199,9 @@ function init() {
         amount: amt, 
         category: currentCategory, 
         paymentMode: payMode, 
-        note: `${note} ${isRecurring ? '(Autopay)' : ''}`, 
-        isRecurring: isRecurring,
+        note: `${note} (${expenseType})`.trim(), 
+        expenseType: expenseType,
+        isRecurring: expenseType === 'Recurring',
         date: customDate 
       });
       localStorage.setItem('expenses', JSON.stringify(expenses));
@@ -475,27 +476,28 @@ function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = daysInMonth - now.getDate() + 1;
+  const daysElapsed = Math.max(1, now.getDate());
 
   let daysUntilBrokeVal = daysLeft;
   if (remBudget <= 0) {
     daysUntilBrokeVal = 0;
   } else {
-    // Exclude fixed (recurring) expenses from burn rate calculations.
-    // We only care about how fast you burn cash *manually*.
-    const variableExps = monthExps.filter(e => !e.isRecurring);
+    // Exclude fixed expenses (Autopay) from burn rate calculations.
+    // Legacy support: filter out if e.expenseType === 'Fixed' OR e.isRecurring === true (if old data)
+    const variableExps = monthExps.filter(e => e.expenseType !== 'Fixed' && e.isRecurring !== true);
     const variableSpent = variableExps.reduce((a, b) => a + b.amount, 0);
 
-    if (variableSpent > 0 && now.getDate() > 1) {
-      const dailyVariableRate = variableSpent / (now.getDate() - 1);
+    if (variableSpent > 0) {
+      const dailyVariableRate = variableSpent / daysElapsed;
       daysUntilBrokeVal = Math.floor(remBudget / dailyVariableRate);
     } else if (variableSpent === 0 && totalSpent > 0 && remBudget > 0) {
-       // If they've only paid auto-pay bills so far, assume they have the rest of the month
-       daysUntilBrokeVal = daysLeft;
+       // If no variable money spent, basically infinite lifespan technically for variable.
+       // Set artificially high default to reward saving behavior.
+       daysUntilBrokeVal = 999;
     }
   }
 
-  if (daysUntilBrokeVal > daysInMonth) daysUntilBrokeVal = daysInMonth;
-
+  // Remove the artificial daysInMonth cap so it can legally display high numbers like 150 days
   animateValue(el('dash-days'), 0, daysUntilBrokeVal, 600);
 
   const circMeter = el('days-meter');
@@ -517,16 +519,17 @@ function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
     if (circMeter) circMeter.style.stroke = '#ef4444';
     if (dashDaysNode) dashDaysNode.style.color = '#ef4444';
     if (warningTextNode) warningTextNode.style.color = '#ef4444';
-    warningStr = "Out of funds.";
-  } else if (daysUntilBrokeVal < 15) {
+    warningStr = "Out of funds soon.";
+  } else if (daysUntilBrokeVal < daysInMonth) {
     if (circMeter) circMeter.style.stroke = '#FFD166';
     if (dashDaysNode) dashDaysNode.style.color = '#FFD166';
     if (warningTextNode) warningTextNode.style.color = '#8A8D98';
   } else {
+    // Highly efficient spending, exceeds month
     if (circMeter) circMeter.style.stroke = '#4ADE80';
     if (dashDaysNode) dashDaysNode.style.color = '#4ADE80';
     if (warningTextNode) warningTextNode.style.color = '#8A8D98';
-    warningStr = "On track to last the month!";
+    warningStr = "Incredible saving rate!";
   }
 
   if (warningTextNode) warningTextNode.innerText = `⚠ ${warningStr}`;

@@ -1,9 +1,9 @@
-# ₹ BROKE? — Student Expense Tracker (Team 404!)
+# ₹ EXPENZA — Student Expense Tracker (Team 404!)
 
 ![Broke Screenshot](/Users/mahidhar/.gemini/antigravity/brain/1ca95143-6245-44df-a10d-059ab874963d/student_expense_tracker_main_1776403695118.png)
 
 Welcome to the official hackathon repository for **Team 404!**. 
-*BROKE?* is a premium, cinematic, math-driven expense tracker designed specifically for students.
+*EXPENZA* is a premium, cinematic, math-driven expense tracker designed specifically for students.
 
 ## 🏆 Team Details
 - **Team Name:** Team 404!
@@ -20,7 +20,7 @@ Welcome to the official hackathon repository for **Team 404!**.
 Most students managing money on their own for the first time run dry before the month ends. The budgeting apps that exist were built for salaried adults and do not map well to how students actually spend: canteen meals, auto fares, last-minute stationery, weekend plans. They end up guessing where the money went and running out of funds before the month is over.
 
 ## 💡 Our Solution
-*BROKE?* tracks cash where it counts. We discard traditional boring accounting for an aggressive, futuristic glassmorphic UI. 
+*EXPENZA* tracks cash where it counts. We discard traditional boring accounting for an aggressive, futuristic glassmorphic UI. 
 
 **Key Features:**
 *   **Predictive AI "Days Until Broke" Math**: We calculate your true "monthly burn rate" by isolating your non-negotiable fixed expenses (Autopay) from your manual variable spending (Food, Outings). The app accurately predicts exactly how many days of cash you have left.
