@@ -568,9 +568,14 @@ function updateDaysUntilBrokeUI(monthExps, totalSpent, remBudget) {
   }
 
   if (result === 'Safe') {
-    if (dashDaysNode) { dashDaysNode.innerText = '✓'; dashDaysNode.style.color = '#4ADE80'; }
-    if (warningTextNode) { warningTextNode.innerText = '✅ Safe — no daily spending pattern detected'; warningTextNode.style.color = '#8A8D98'; }
-    setMeter(1, '#4ADE80');
+    // No recurring spend yet — use budget/30 baseline to show a meaningful number
+    const remaining_balance = Math.max(0, budget - monthExps.reduce((s, e) => s + e.amount, 0));
+    const baselineDays = Math.round(remaining_balance / (budget / 30));
+    const safeDays = Math.min(baselineDays, 365);
+    animateValue(dashDaysNode, 0, safeDays, 800);
+    if (dashDaysNode) dashDaysNode.style.color = '#4ADE80';
+    if (warningTextNode) { warningTextNode.innerText = '✅ Safe — no recurring spend yet'; warningTextNode.style.color = '#8A8D98'; }
+    setMeter(Math.min(safeDays / daysInMonth, 1), '#4ADE80');
     if (trendNode) { trendNode.innerText = '📈'; trendNode.title = 'Spending trend: Safe'; }
     setMsg("You're on track for the month!", '#4ADE80', 'rgba(74,222,128,0.1)');
     return;
