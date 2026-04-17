@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Broke? Expense Tracker</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <!-- Cinematic Splash Screen -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-wrapper">
+            <div class="orbit-container">
+                <div class="orbit-dot"></div>
+            </div>
+            <div class="splash-main-text" id="splash-main-text">#*@%&!</div>
+        </div>
+    </div>
+
+    <div class="global-wrapper">
+
+        <!-- Core App Container (Extended Left Side) -->
+        <div class="app-container">
+            <!-- Top Nav -->
+            <header class="app-header">
+                <div class="header-title">
+                    <span class="yellow">₹</span>BROKE?
+                </div>
+            </header>
+
+            <div class="view-scroll-container">
+                <!-- View 1: Setup -->
+                <div id="view-setup" class="view active">
+                    <h5 class="subtext">STUDENT EXPENSE TRACKER</h5>
+
+                    <h1 class="hero-title mt-lg">How much are you<br><span class="yellow">working with</span><br>this
+                        month?</h1>
+                    <p class="hero-sub mt-md">Set your monthly budget. We'll tell you exactly when you're about to go
+                        broke.</p>
+
+                    <div class="input-group mt-lg">
+                        <label>MONTHLY BUDGET (₹)</label>
+                        <div class="input-wrapper">
+                            <span class="currency-symbol yellow">₹</span>
+                            <input type="number" id="setup-budget-input" placeholder="e.g. 5000">
+                        </div>
+                    </div>
+
+                    <div class="preset-chips mt-md" id="preset-chips">
+                        <button class="chip" data-val="2000">₹2,000</button>
+                        <button class="chip" data-val="3500">₹3,500</button>
+                        <button class="chip" data-val="5000">₹5,000</button>
+                        <button class="chip" data-val="8000">₹8,000</button>
+                    </div>
+
+                    <div class="input-group mt-lg">
+                        <label>CORE CATEGORIES</label>
+                        <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem;">Remove defaults and specify your own.</p>
+                        <div id="setup-categories" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                            <!-- Populated by JS -->
+                        </div>
+                        <button class="btn mt-sm" id="setup-add-cat" style="font-size: 0.8rem; padding: 0.5rem; background: transparent; border: 1px dashed var(--border-color); color: var(--text-main); border-radius: 8px;">+ Add Category</button>
+                    </div>
+
+                    <button class="btn btn-primary btn-bottom btn-setup" id="start-tracking-btn">START TRACKING
+                        →</button>
+                </div>
+
+                <!-- View 2: Dashboard -->
+                <div id="view-dashboard" class="view pb-extended">
+                    <h5 class="subtext mb-md">EXPENSE TRACKER - <span id="dash-month-display"></span></h5>
+
+                    <!-- Days Until Broke Widget -->
+                    <div class="card circular-widget-card mb-md glow-anim" id="hero-widget">
+                        <div class="widget-header">DAYS UNTIL BROKE</div>
+                        <div class="circular-progress-container mb-sm mt-md">
+                            <svg class="circular-progress" viewBox="0 0 100 100">
+                                <circle class="bg" cx="50" cy="50" r="45"></circle>
+                                <filter id="glow">
+                                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                                    <feMerge>
+                                        <feMergeNode in="coloredBlur" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
+                                <circle class="meter" id="days-meter" cx="50" cy="50" r="45" filter="url(#glow)">
+                                </circle>
+                            </svg>
+                            <div class="widget-value">
+                                <span class="number green" id="dash-days">0</span>
+                                <span class="label">days</span>
+                            </div>
+                        </div>
+                        <div class="widget-footer text-muted sm-text" id="dash-warning-text"></div>
+                    </div>
+
+                    <!-- Spent / Remaining Card -->
+                    <div class="card mb-md">
+                        <div class="split-stats mb-sm">
+                            <div>
+                                <div class="label">SPENT</div>
+                                <div class="val green">₹<span id="dash-spent">0</span></div>
+                            </div>
+                            <div class="text-right">
+                                <div class="label">REMAINING</div>
+                                <div class="val text-white">₹<span id="dash-rem">0</span></div>
+                            </div>
+                        </div>
+                        <div class="linear-progress bg-dark">
+                            <div class="linear-meter bg-darker" id="spent-meter" style="width: 0%"></div>
+                        </div>
+                        <div class="split-stats sm-text mt-sm">
+                            <div id="dash-perc">0% used</div>
+                            <div class="text-muted">Budget: ₹<span id="dash-budget">0</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Category Breakdown -->
+                    <div class="card">
+                        <div class="label mb-md">CATEGORY BREAKDOWN</div>
+                        <div class="category-list" id="category-breakdown-list"></div>
+                    </div>
+                </div>
+
+                <!-- View 3: Add Expense -->
+                <div id="view-add-expense" class="view pb-extended">
+                    <div class="label mb-sm mt-sm">SELECT CATEGORY</div>
+                    <div class="category-selector mb-md" id="add-category-list">
+                        <!-- Populated completely by JS -->
+                    </div>
+
+                    <!-- Moved above inputs to ensure users see how to create one -->
+                    <button class="add-cat-btn mb-lg" id="add-custom-cat-btn">+ Add Custom Category</button>
+
+                    <div class="input-group mb-md">
+                        <label>AMOUNT (₹)</label>
+                        <div class="input-wrapper">
+                            <span class="currency-symbol yellow">₹</span>
+                            <input type="number" id="add-amount" placeholder="0">
+                        </div>
+                    </div>
+
+                    <div class="input-group mb-md">
+                        <label>NOTE (optional)</label>
+                        <div class="input-wrapper no-symbol">
+                            <input type="text" id="add-note" placeholder="e.g. Lunch at canteen">
+                        </div>
+                    </div>
+
+                    <div class="input-group mb-md">
+                        <label>PAYMENT MODE</label>
+                        <div class="input-wrapper no-symbol" style="padding: 0;">
+                            <select id="add-payment-mode" style="width: 100%; background: transparent; border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 1rem; padding: 1rem; outline: none; appearance: none;">
+                                <option value="UPI" style="color: black;">📱 UPI (GPay/Paytm)</option>
+                                <option value="Cash" style="color: black;">💵 Cash</option>
+                                <option value="Card" style="color: black;">💳 Card</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Apple Style Toggle -->
+                    <div class="toggle-group mb-xl">
+                        <label>RECURRING (MANUAL)</label>
+                        <label class="apple-switch">
+                            <input type="checkbox" id="add-recurring">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary" id="save-expense-btn">ADD EXPENSE</button>
+                    <div style="height: 30px;"></div>
+                </div>
+
+                <!-- View 4: Keeper -->
+                <div id="view-keeper" class="view pb-extended">
+                    <h5 class="subtext mb-md">THE KEEPER</h5>
+
+                    <div class="keeper-display mt-md mb-xl">
+                        <div class="jar-container">
+                            <div class="jar-lid"></div>
+                            <div class="jar-glass">
+                                <div class="jar-fill" id="jar-level" style="height: 0%"></div>
+                                <div class="jar-label">
+                                    <span class="label">STASHED</span>
+                                    <div class="yellow">₹<span id="stashed-amount">0</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-xl mb-md">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+                            Unspent money will roll over here intelligently at the end of the month. You can also
+                            securely stash manually.</p>
+                        <div class="input-group mb-md">
+                            <label>STASH AMOUNT (₹)</label>
+                            <div class="input-wrapper">
+                                <span class="currency-symbol">₹</span>
+                                <input type="number" id="stash-input" placeholder="0">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="stash-btn">LOCK MONEY AWAY</button>
+                        <button class="btn mt-md" id="withdraw-btn" style="width: 100%; background: transparent; border: 1px solid rgba(255, 209, 102, 0.4); color: var(--yellow); font-family: 'Roboto Mono', monospace; font-weight: 700; padding: 1rem; border-radius: 12px; transition: 0.2s;">WITHDRAW TO BUDGET</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Authentic Apple/Liquid Glass Nav -->
+            <nav class="glass-nav" id="bottom-nav" style="display: none;">
+                <button class="nav-item active" data-target="view-dashboard">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>Home</span>
+                </button>
+                <button class="nav-item" data-target="view-add-expense">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <span>Log</span>
+                </button>
+                <button class="nav-item" data-target="view-keeper">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        <path d="M14.5 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"></path>
+                    </svg>
+                    <span>Keeper</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Desktop Right Panel: Analytics -->
+        <aside class="side-panel right-panel">
+            <div class="panel-header" style="justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="emoji" style="font-size: 1.5rem;">📊</span>
+                    <div>
+                        <div class="panel-title">EXPENSE ANALYTICS</div>
+                        <div class="panel-sub" style="color: var(--green);">Deep Financial Insights</div>
+                    </div>
+                </div>
+                <button id="show-wrap-btn" style="background: transparent; border: 1px solid var(--text-muted); color: var(--text-main); font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 20px; cursor: pointer;">✨ MONTH WRAP</button>
+            </div>
+
+            <!-- AI Insights Warning Window -->
+            <div id="ai-insight-box" class="card mt-md mb-md" style="padding: 1rem; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); display: none;">
+                <div style="display: flex; gap: 0.8rem; align-items: flex-start;">
+                    <div style="font-size: 1.5rem;">🤖</div>
+                    <div>
+                        <div style="font-family: 'Roboto Mono', monospace; font-weight: 700; font-size: 0.8rem; color: #ef4444; margin-bottom: 0.3rem;">AI ADVISORY WARNING</div>
+                        <div id="ai-insight-text" style="font-size: 0.8rem; color: var(--text-main); line-height: 1.4;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Chart -->
+            <div class="chart-container" style="height: 250px; width: 100%; margin-top: 1rem; position: relative;">
+                <div
+                    style="text-align: center; font-size: 0.70rem; color: var(--text-muted); font-family: 'Roboto Mono'; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                    MONTHLY EXPENDITURE</div>
+                <canvas id="monthly-pie-chart"></canvas>
+            </div>
+
+            <div style="height: 1px; background: rgba(255,255,255,0.05); margin: 2rem 0;"></div>
+
+            <!-- Yearly Chart -->
+            <div class="chart-container" style="height: 250px; width: 100%; position: relative;">
+                <div
+                    style="text-align: center; font-size: 0.70rem; color: var(--text-muted); font-family: 'Roboto Mono'; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                    YEARLY EXPENDITURE</div>
+                <canvas id="yearly-pie-chart"></canvas>
+            </div>
+
+            <div class="history-label mt-xl" style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--text-muted); letter-spacing: 1px;">RECENT TRANSACTIONS</span>
+            </div>
+            <div class="history-feed mt-sm" id="history-log">
+                <!-- Transactions here -->
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Toast UI -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Category Modal -->
+    <div id="category-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">ADD CUSTOM CATEGORY</div>
+            <div class="input-group mb-md">
+                <label>CATEGORY NAME</label>
+                <div class="input-wrapper no-symbol">
+                    <input type="text" id="cat-modal-name" placeholder="e.g. Subscriptions">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>EMOJI ICON</label>
+                <div class="input-wrapper no-symbol">
+                    <input type="text" id="cat-modal-emoji" placeholder="e.g. 📺" maxlength="2">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" id="cat-modal-cancel" style="flex:1; font-family: 'Roboto Mono', monospace; font-weight: 700; padding: 1rem; border-radius: 12px; transition: 0.2s; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer;">CANCEL</button>
+                <button class="btn btn-primary" id="cat-modal-save" style="flex:1;">SAVE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Month Wrap Screen -->
+    <div id="month-wrap-screen" class="month-wrap-screen">
+        <div class="wrap-content" id="wrap-content"></div>
+        <div class="wrap-progress">
+            <div class="wrap-bar" id="wrap-bar"></div>
+        </div>
+    </div>
+
+    <!-- Audio Effects -->
+    <audio id="sound-coin" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3" preload="auto"></audio>
+    <audio id="sound-swoosh" src="https://assets.mixkit.co/active_storage/sfx/2959/2959-preview.mp3" preload="auto"></audio>
+    <audio id="sound-tada" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
